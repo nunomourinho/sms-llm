@@ -24,7 +24,7 @@ Email de alerta (IMAP)  →  LLM local (Qwen2.5)  →  SMS (Yeastar TG100)
 ### 1. Clonar e configurar
 
 ```bash
-git clone git@github.com:nunomourinho/sms-llm.git
+git clone https://github.com/nunomourinho/sms-llm.git
 cd sms-llm
 cp config.ini.example config.ini
 ```
