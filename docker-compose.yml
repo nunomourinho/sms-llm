@@ -36,20 +36,20 @@ services:
     # O container executa o script de 5 em 5 minutos via loop shell
     # (mais leve do que instalar cron dentro do container)
     command: >
-      sh -c "
+      sh -c '
         MODEL=/opt/models/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf &&
         MODEL_URL=https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf &&
-        if [ ! -f \"\$MODEL\" ]; then
-          echo \"[\$$(date '+%Y-%m-%d %H:%M:%S')] Modelo não encontrado. A descarregar...\" &&
-          wget -q --show-progress -O \"\$MODEL\" \"\$MODEL_URL\" ||
-          { echo '[ERRO] Falha ao descarregar o modelo.'; exit 1; } ;
+        if [ ! -f "$MODEL" ]; then
+          echo "Modelo nao encontrado. A descarregar..." &&
+          wget -q --show-progress -O "$MODEL" "$MODEL_URL" ||
+          { echo "ERRO: Falha ao descarregar o modelo."; exit 1; } ;
         fi &&
         while true; do
-          echo \"[\$$(date '+%Y-%m-%d %H:%M:%S')] A executar sms_alertas.py...\" &&
-          python /app/sms_alertas.py || echo '[ERRO] Script terminou com erro — a aguardar próxima execução' ;
+          echo "A executar sms_alertas.py..." &&
+          python /app/sms_alertas.py || echo "ERRO: Script terminou com erro - a aguardar proxima execucao" ;
           sleep 300 ;
         done
-      "
+      '
 
     # Acesso à rede do host para alcançar servidores externos
     # (IMAP externo e TG100 na rede local da instituição)
