@@ -1,0 +1,59 @@
+# =============================================================================
+#  config.ini — Configuração do sistema de alertas SMS
+#  ATENÇÃO: NÃO versionar este ficheiro (adicionar ao .gitignore)
+# =============================================================================
+
+[imap]
+# Servidor IMAP — usar 127.0.0.1 para Dovecot local
+server   = 127.0.0.1
+port     = 993
+# true  → IMAP4_SSL  (recomendado em produção, porta 993)
+# false → IMAP4 simples (apenas para loopback local sem TLS disponível)
+use_ssl  = true
+user     = alterar user
+password = ALTERAR_PASSWORD_AQUI
+# Pasta a monitorizar
+mailbox  = INBOX
+
+[tg100]
+# IP ou hostname do Yeastar TG100
+host     = 192.168.1.100
+port     = 80
+# true → HTTPS  |  false → HTTP (apenas para redes internas isoladas)
+use_ssl  = false
+# Utilizador e password criados na interface web do TG100 (API)
+user     = ALTERAR_UTILIZADOR_API
+password = ALTERAR_PASSWORD_API
+# Porta GSM a usar (1 = primeira porta do TG100)
+gsm_port = 1
+# Timeout em segundos para a chamada HTTP à API
+timeout  = 10
+
+[llm]
+# Caminho absoluto para o modelo GGUF (Qwen2.5 ou compatível)
+model_path   = /opt/models/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf
+# Janela de contexto — 1024 é suficiente para emails de alerta curtos
+n_ctx        = 3096
+# Número de threads de CPU a usar (ajustar ao servidor)
+n_threads    = 2
+# Temperatura próxima de 0 para respostas determinísticas
+temperature  = 0.1
+# Tokens máximos gerados na resposta
+max_tokens   = 60
+
+[sms]
+# Limite de caracteres por SMS (140 = SMS clássico; 160 = GSM-7 sem caracteres especiais)
+char_limit          = 140
+# Ficheiro com os números de destino, um por linha
+numeros_ficheiro    = /opt/numeros_sms.txt
+
+[llm_prompt]
+# Prompt de sistema enviado ao modelo — personalize conforme os emails da sua infraestrutura
+# Use {char_limit} para injetar o limite de caracteres automaticamente
+system = You extract data from IT monitoring alert emails. Reply ONLY with this exact format, no other text: S: [SystemName] | T: [Subject] | L: [Level] | D: [Details]. Keep the total reply under {char_limit} characters.
+
+[logging]
+# Nível: DEBUG | INFO | WARNING | ERROR | CRITICAL
+level   = INFO
+# Caminho do ficheiro de log (deixar vazio para registar apenas na consola)
+logfile = /var/log/sms_alertas.log

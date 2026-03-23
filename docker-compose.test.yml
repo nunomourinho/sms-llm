@@ -1,0 +1,39 @@
+# =============================================================================
+#  docker-compose.test.yml — Ambiente de teste simulado
+#
+#  Serviços:
+#      mock_tg100    — Mock HTTP da API Yeastar TG100
+#      sms_alertas   — Aplicação principal (IMAP e LLM mockados)
+#
+#  Uso:
+#      docker compose -f docker-compose.test.yml up --abort-on-container-exit
+# =============================================================================
+
+services:
+
+  mock_tg100:
+    image: python:3.12-slim
+    container_name: mock_tg100
+    volumes:
+      - ./test:/test:ro
+    command: python /test/mock_tg100.py
+    networks:
+      - test_net
+
+  sms_alertas:
+    build: .
+    container_name: sms_alertas_test
+    volumes:
+      - ./config.test.ini:/app/config.ini:ro
+      - ./numeros_sms.txt:/opt/numeros_sms.txt:ro
+      - ./test:/test:ro
+      - ./logs:/var/log
+    command: python /test/run_test.py
+    depends_on:
+      - mock_tg100
+    networks:
+      - test_net
+
+networks:
+  test_net:
+    driver: bridge

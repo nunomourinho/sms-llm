@@ -1,0 +1,14 @@
+# Credenciais e configuração local
+config.ini
+.env
+
+# Logs
+logs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Modelos LLM (demasiado grandes para versionar)
+*.gguf

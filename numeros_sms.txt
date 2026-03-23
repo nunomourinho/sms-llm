@@ -1,0 +1,4 @@
+# Números de destino para SMS (um por linha)
+# Formato: XXXXXXXXX
+960000001
+960000002
