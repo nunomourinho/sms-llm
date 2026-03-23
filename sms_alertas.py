@@ -27,6 +27,7 @@ from pathlib import Path
 
 import requests                      # mais seguro e moderno que urllib
 from requests.exceptions import RequestException
+from urllib.parse import quote as _urlencode
 from llama_cpp import Llama
 
 
@@ -77,6 +78,8 @@ def configurar_logging(cfg: configparser.ConfigParser) -> None:
         datefmt="%Y-%m-%d %H:%M:%S",
         handlers=handlers,
     )
+    # Forçar o nível mesmo se basicConfig foi no-op (handlers já existentes)
+    logging.getLogger().setLevel(getattr(logging, nivel, logging.INFO))
 
 
 # ---------------------------------------------------------------------------
@@ -262,17 +265,23 @@ def enviar_sms(numero: str, mensagem: str, cfg: configparser.ConfigParser) -> st
     gsm_port = cfg.getint("tg100", "gsm_port", fallback=1)
     timeout = cfg.getint("tg100", "timeout", fallback=10)
 
-    url = f"{esquema}://{host}:{porta}/cgi/WebCGI"
-    params = {
-        "1500101": f"account={user}&password={passwd}"
-                   f"&port={gsm_port}&destination={numero}&content={mensagem}"
-    }
+    # A API do TG100 usa um formato não-standard: o parâmetro "1500101" contém
+    # "account=USER" e os restantes campos são parâmetros separados na query string.
+    # O requests.get(params=...) codificaria os '=' e '&' — construir a URL à mão.
+    query = (
+        f"1500101=account={_urlencode(user, safe='')}"
+        f"&password={_urlencode(passwd, safe='')}"
+        f"&port={gsm_port}"
+        f"&destination={_urlencode(numero, safe='')}"
+        f"&content={_urlencode(mensagem, safe='')}"
+    )
+    url = f"{esquema}://{host}:{porta}/cgi/WebCGI?{query}"
+    logging.info("TG100 URL: %s", url)
 
     try:
         # verify=True → valida certificado SSL se use_ssl=true
         resposta = requests.get(
             url,
-            params=params,
             timeout=timeout,
             verify=cfg.getboolean("tg100", "use_ssl", fallback=False),
         )

@@ -1,5 +1,6 @@
 # Credenciais e configuração local
 config.ini
+config.test.ini
 .env
 
 # Logs
@@ -12,3 +13,4 @@ __pycache__/
 
 # Modelos LLM (demasiado grandes para versionar)
 *.gguf
+models/

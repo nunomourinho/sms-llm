@@ -34,6 +34,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libssl-dev \
         ca-certificates \
         wget \
+        gosu \
     && rm -rf /var/lib/apt/lists/*
 
 # ---------------------------------------------------------------------------
@@ -61,17 +62,18 @@ RUN pip install --upgrade pip && \
 # config.ini NÃO é copiado para a imagem — é montado como volume em runtime
 COPY sms_alertas.py .
 
-# Criar diretório de logs com permissões corretas
+# Criar diretório de logs e diretório de modelos (o volume sobrepõe este último em runtime)
 RUN mkdir -p /var/log && \
     mkdir -p $MODELS_DIR && \
     chown -R appuser:appgroup $APP_DIR /var/log $MODELS_DIR
 
-# ---------------------------------------------------------------------------
-# Correr como utilizador não-root
-# ---------------------------------------------------------------------------
-USER appuser
+# Entrypoint: corre como root para corrigir permissões do volume montado,
+# depois faz drop para appuser via gosu antes de executar o comando.
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # ---------------------------------------------------------------------------
-# Comando padrão (substituído pelo docker-compose command)
+# Ponto de entrada e comando padrão
 # ---------------------------------------------------------------------------
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["python", "/app/sms_alertas.py"]

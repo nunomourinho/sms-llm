@@ -1,9 +1,9 @@
 # =============================================================================
-#  docker-compose.test.yml — Ambiente de teste simulado
+#  docker-compose.test.yml — Ambiente de teste semi-real
 #
-#  Serviços:
-#      mock_tg100    — Mock HTTP da API Yeastar TG100
-#      sms_alertas   — Aplicação principal (IMAP e LLM mockados)
+#  IMAP  : imap_server.py (servidor TCP real em Python, email de alerta pré-carregado)
+#  LLM   : mock (resposta fixa, sem necessidade do ficheiro GGUF)
+#  SMS   : TG100 REAL (credenciais em config.test.ini [tg100])
 #
 #  Uso:
 #      docker compose -f docker-compose.test.yml up --abort-on-container-exit
@@ -11,12 +11,19 @@
 
 services:
 
-  mock_tg100:
+  imap_server:
     image: python:3.12-slim
-    container_name: mock_tg100
+    container_name: imap_server_test
     volumes:
       - ./test:/test:ro
-    command: python /test/mock_tg100.py
+    command: python /test/imap_server.py
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost',1143)); s.close()"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
     networks:
       - test_net
 
@@ -30,7 +37,8 @@ services:
       - ./logs:/var/log
     command: python /test/run_test.py
     depends_on:
-      - mock_tg100
+      imap_server:
+        condition: service_healthy
     networks:
       - test_net
 
