@@ -21,15 +21,22 @@ Email de alerta (IMAP)  →  LLM local (Qwen2.5)  →  SMS (Yeastar TG100)
 
 ## Instalação
 
-### 1. Clonar e configurar
+### 1. Clonar o repositório
 
 ```bash
 git clone https://github.com/nunomourinho/sms-llm.git
 cd sms-llm
-cp config.ini.example config.ini
 ```
 
-### 2. Preencher credenciais
+### 2. Executar o script de setup
+
+```bash
+bash setup.sh
+```
+
+O script cria as directorias necessárias (`models/`, `logs/`) com as permissões correctas e copia `config.ini.example` para `config.ini` se ainda não existir.
+
+### 3. Preencher credenciais
 
 Editar `config.ini`:
 
@@ -52,7 +59,7 @@ Editar `numeros_sms.txt` com os números de destino (um por linha):
 +351920000000
 ```
 
-### 3. Iniciar
+### 4. Iniciar
 
 ```bash
 docker compose up -d
@@ -61,7 +68,7 @@ docker compose up -d
 Na primeira execução, o container descarrega automaticamente o modelo LLM (~1 GB):
 
 ```
-Qwen2.5-1.5B-Instruct-Q4_K_M.gguf  →  /opt/models/
+Qwen2.5-1.5B-Instruct-Q4_K_M.gguf  →  ./models/
 ```
 
 O modelo fica persistente no host e não é re-descarregado em reinícios.
@@ -70,7 +77,7 @@ O modelo fica persistente no host e não é re-descarregado em reinícios.
 
 ## Funcionamento
 
-O script corre em loop contínuo (a cada 5 minutos) dentro do container:
+O script corre em loop contínuo dentro do container, com o intervalo definido em `config.ini` na secção `[schedule] interval` (padrão: 900 s = 15 min):
 
 1. Liga ao servidor IMAP e obtém emails **não lidos** (UNSEEN)
 2. Extrai assunto e corpo de cada email
@@ -95,6 +102,7 @@ Todos os parâmetros estão em `config.ini`. O ficheiro **não deve ser versiona
 | `[sms]` | `char_limit` | Limite de caracteres por SMS (padrão: 140) |
 | `[sms]` | `numeros_ficheiro` | Ficheiro com números de destino |
 | `[llm_prompt]` | `system` | Prompt de sistema enviado ao LLM |
+| `[schedule]` | `interval` | Intervalo entre execuções em segundos (padrão: 900) |
 | `[logging]` | `level`, `logfile` | Nível de log e ficheiro de saída |
 
 ---
@@ -110,28 +118,20 @@ tail -f logs/sms_alertas.log    # ficheiro de log no host
 
 ---
 
-## Teste simulado
+## Teste semi-real
 
-Para testar sem servidor IMAP real nem TG100:
+Para testar com servidor IMAP simulado (email de alerta pré-carregado), LLM real e TG100 real:
 
 ```bash
 docker compose -f docker-compose.test.yml up --abort-on-container-exit
 ```
 
 O ambiente de teste inclui:
-- **mock IMAP** — email de alerta pré-carregado em memória
-- **mock LLM** — resposta fixa sem necessidade de modelo GGUF
-- **mock TG100** — servidor HTTP que regista os SMS recebidos
+- **imap_server** — servidor IMAP TCP mínimo com email de alerta CRITICAL pré-carregado
+- **LLM real** — modelo GGUF carregado de `./models/` (necessário ter o ficheiro presente)
+- **TG100 real** — credenciais configuradas em `config.test.ini`
 
-Saída esperada:
-
-```
-[TEST] 1 email(s) não lido(s) encontrado(s).
-[TEST] A enviar SMS para +351960000000: S: SERVER01 | T: CPU Alert | L: CRITICAL | D: CPU 95%
-[TG100-MOCK] *** SMS RECEBIDO ***
-[TG100-MOCK]   Destino  : +351960000000
-[TG100-MOCK]   Conteúdo : S: SERVER01 | T: CPU Alert | L: CRITICAL | D: CPU 95%
-```
+Requer `config.test.ini` com as credenciais reais do TG100 (não versionado).
 
 ---
 
@@ -141,18 +141,22 @@ Saída esperada:
 sms-llm/
 ├── sms_alertas.py          # Script principal
 ├── Dockerfile              # Imagem Docker (compila llama-cpp sem AVX)
+├── entrypoint.sh           # Corrige permissões e faz drop para appuser
+├── setup.sh                # Cria directorias e ficheiros iniciais no host
 ├── docker-compose.yml      # Stack de produção
-├── docker-compose.test.yml # Stack de teste simulado
+├── docker-compose.test.yml # Stack de teste semi-real
 ├── requirements.txt        # Dependências Python
 ├── config.ini.example      # Configuração de exemplo (copiar para config.ini)
 ├── config.ini              # Credenciais e configuração reais (não versionado)
-├── config.test.ini         # Configuração para testes
-├── .env.example            # Variáveis de ambiente de exemplo
-├── numeros_sms.txt         # Números de destino SMS
-├── logs/                   # Logs persistentes
+├── config.test.ini         # Configuração para testes (não versionado)
+├── numeros_sms.txt         # Números de destino SMS (não versionado)
+├── models/                 # Modelo GGUF persistente (criado pelo setup.sh)
+├── logs/                   # Logs persistentes (criado pelo setup.sh)
 └── test/
-    ├── mock_imap.py        # Mock do servidor IMAP
-    ├── mock_llm.py         # Mock do modelo LLM
-    ├── mock_tg100.py       # Mock da API do TG100
-    └── run_test.py         # Ponto de entrada do teste
+    ├── imap_server.py      # Servidor IMAP TCP mínimo para testes
+    ├── run_test.py         # Ponto de entrada do teste
+    ├── mock_imap.py        # (legacy) mock IMAP em memória
+    ├── mock_llm.py         # (legacy) mock LLM
+    ├── mock_tg100.py       # (legacy) mock TG100
+    └── seed_imap.py        # Utilitário para carregar emails no servidor de teste
 ```
