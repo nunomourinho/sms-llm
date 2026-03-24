@@ -33,6 +33,7 @@ services:
     volumes:
       - ./config.test.ini:/app/config.ini:ro
       - ./numeros_sms.txt:/opt/numeros_sms.txt:ro
+      - ./models:/opt/models:ro
       - ./test:/test:ro
       - ./logs:/var/log
     command: python /test/run_test.py
