@@ -33,7 +33,7 @@ services:
       # Logs persistentes
       - ./logs:/var/log
 
-    # O container executa o script de 5 em 5 minutos via loop shell
+    # O container executa o script de 15 em 15 minutos via loop shell
     # (mais leve do que instalar cron dentro do container)
     command: >
       sh -c '
@@ -47,7 +47,7 @@ services:
         while true; do
           echo "A executar sms_alertas.py..." &&
           python /app/sms_alertas.py || echo "ERRO: Script terminou com erro - a aguardar proxima execucao" ;
-          sleep 300 ;
+          sleep 900 ;
         done
       '
 
