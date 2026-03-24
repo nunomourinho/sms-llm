@@ -33,7 +33,7 @@ services:
       # Logs persistentes
       - ./logs:/var/log
 
-    # O container executa o script de 15 em 15 minutos via loop shell
+    # O container executa o script em loop com intervalo configurável em config.ini [schedule] interval
     # (mais leve do que instalar cron dentro do container)
     command: >
       sh -c '
@@ -47,7 +47,9 @@ services:
         while true; do
           echo "A executar sms_alertas.py..." &&
           python /app/sms_alertas.py || echo "ERRO: Script terminou com erro - a aguardar proxima execucao" ;
-          sleep 900 ;
+          INTERVAL=$$(python3 -c "import configparser; c=configparser.ConfigParser(); c.read(\"/app/config.ini\"); print(c.get(\"schedule\",\"interval\",fallback=\"900\"))") &&
+          echo "A aguardar $${INTERVAL}s ate a proxima execucao..." &&
+          sleep "$$INTERVAL" ;
         done
       '
 
