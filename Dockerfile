@@ -43,8 +43,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ARG APPUSER_UID=1001
 ARG APPUSER_GID=1001
 
-RUN groupadd --gid "${APPUSER_GID}" appgroup && \
-    useradd  --uid "${APPUSER_UID}" --gid appgroup --shell /bin/bash --create-home appuser
+RUN if ! getent group "${APPUSER_GID}" > /dev/null 2>&1; then \
+        groupadd --gid "${APPUSER_GID}" appgroup; \
+    fi && \
+    useradd --uid "${APPUSER_UID}" --gid "${APPUSER_GID}" --shell /bin/bash --create-home appuser
 
 # ---------------------------------------------------------------------------
 # Instalar dependências Python

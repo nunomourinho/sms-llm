@@ -82,17 +82,17 @@ if [ -f "$ENV_FILE" ]; then
 fi
 
 if [ -n "${MAIL_ACCOUNT:-}" ] && [ -n "${MAIL_PASSWORD:-}" ]; then
-    if ! command -v docker &>/dev/null; then
-        echo "AVISO: docker não encontrado — conta de email interno não configurada."
-        echo "       Instala Docker e corre setup.sh novamente."
+    if ! command -v openssl &>/dev/null; then
+        echo "AVISO: openssl não encontrado — conta de email interno não configurada."
+        echo "       Instala openssl e corre setup.sh novamente."
         INTERNAL_MAIL=false
     else
         mkdir -p mailconfig
-        # Usar a própria imagem para criar a conta com o formato correcto (doveadm pw)
-        docker run --rm \
-            -v "$(pwd)/mailconfig:/tmp/docker-mailserver" \
-            ghcr.io/docker-mailserver/docker-mailserver:14 \
-            setup email add "${MAIL_ACCOUNT}" "${MAIL_PASSWORD}"
+        # Gerar hash SHA-512 compatível com Dovecot e escrever postfix-accounts.cf
+        MAIL_HASH=$(openssl passwd -6 "${MAIL_PASSWORD}")
+        printf '%s|{SHA512-CRYPT}%s\n' "${MAIL_ACCOUNT}" "${MAIL_HASH}" \
+            > mailconfig/postfix-accounts.cf
+        chmod 640 mailconfig/postfix-accounts.cf
         echo ""
         echo "  mailconfig/postfix-accounts.cf criado"
         echo "  Conta interna: ${MAIL_ACCOUNT}"
