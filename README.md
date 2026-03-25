@@ -6,14 +6,16 @@ Sistema que monitoriza uma caixa de correio IMAP, processa alertas de infraestru
 Email de alerta (IMAP)  →  LLM local (Qwen2.5)  →  SMS (Yeastar TG100)
 ```
 
+O servidor de email IMAP pode ser **externo** (institucional/cloud) ou **interno** (incluído no Docker, sem dependências externas).
+
 ---
 
 ## Requisitos
 
 - Docker + Docker Compose
-- Acesso a um servidor IMAP
 - Yeastar TG100 com API HTTP activa
 - ~2 GB de espaço em disco (modelo GGUF)
+- Servidor IMAP externo **ou** usar o servidor de email interno incluído
 
 > **Nota:** O servidor onde corre o Docker precisa de suporte a pelo menos SSE2 (x86-64). A imagem é compilada sem AVX/SSE3+ para compatibilidade com VMs KVM básicas.
 
@@ -28,24 +30,68 @@ git clone https://github.com/nunomourinho/sms-llm.git
 cd sms-llm
 ```
 
-### 2. Executar o script de setup
+### 2. Escolher o modo de email
+
+#### Opção A — Servidor de email externo (padrão)
+
+Basta correr o setup e preencher as credenciais IMAP:
 
 ```bash
 bash setup.sh
 ```
 
-O script cria as directorias necessárias (`models/`, `logs/`) com as permissões correctas e copia `config.ini.example` para `config.ini` se ainda não existir.
+Editar `config.ini [imap]` com os dados do servidor externo e avançar para o passo 3.
 
-### 3. Preencher credenciais
+---
 
-Editar `config.ini`:
+#### Opção B — Servidor de email interno (Docker)
+
+Indicado quando não existe servidor IMAP externo ou se pretende isolar completamente o sistema.
+O Docker sobe um servidor Postfix + Dovecot pré-configurado:
+
+- **SMTP porta 25** — os sistemas de monitorização (Zabbix, Nagios, etc.) enviam emails para este servidor
+- **IMAP porta 143** — lido internamente pelo `sms_alertas` via `127.0.0.1`
+
+**1.** Preencher no `.env` (criado pelo setup a partir de `.env.example`):
+
+```ini
+MAIL_DOMAIN=alertas.local
+MAIL_ACCOUNT=alertas@alertas.local
+MAIL_PASSWORD=password_segura
+```
+
+**2.** Correr o setup — cria automaticamente a conta de email:
+
+```bash
+bash setup.sh
+```
+
+**3.** Apontar `config.ini [imap]` para o servidor interno:
 
 ```ini
 [imap]
-server   = <servidor IMAP>
-user     = <utilizador>
-password = <password>
+server   = 127.0.0.1
+port     = 143
+use_ssl  = false
+user     = alertas@alertas.local
+password = password_segura
+```
 
+**4.** Iniciar com o profile `mailserver`:
+
+```bash
+docker compose --profile mailserver up -d
+```
+
+Os sistemas externos configuram-se para enviar emails SMTP para a porta 25 deste host.
+
+---
+
+### 3. Preencher credenciais do TG100
+
+Editar `config.ini [tg100]`:
+
+```ini
 [tg100]
 host     = <IP do TG100>
 user     = <utilizador API>
@@ -62,7 +108,11 @@ Editar `numeros_sms.txt` com os números de destino (um por linha):
 ### 4. Iniciar
 
 ```bash
+# Modo externo (padrão)
 docker compose up -d
+
+# Modo interno (servidor de email incluído)
+docker compose --profile mailserver up -d
 ```
 
 Na primeira execução, o container descarrega automaticamente o modelo LLM (~1 GB):
@@ -83,7 +133,7 @@ O script corre em loop contínuo dentro do container, com o intervalo definido e
 2. Extrai assunto e corpo de cada email
 3. Envia ao LLM local com o prompt configurado em `[llm_prompt]`
 4. Envia o resultado como SMS via API HTTP do TG100
-5. Marca o email como lido para evitar reprocessamento
+5. Marca o email como lido e apaga-o para evitar reprocessamento
 
 ---
 
@@ -142,14 +192,15 @@ sms-llm/
 ├── sms_alertas.py          # Script principal
 ├── Dockerfile              # Imagem Docker (compila llama-cpp sem AVX)
 ├── entrypoint.sh           # Corrige permissões e faz drop para appuser
-├── setup.sh                # Cria directorias e ficheiros iniciais no host
-├── docker-compose.yml      # Stack de produção
+├── setup.sh                # Cria directorias, conta de email e ficheiros iniciais
+├── docker-compose.yml      # Stack de produção (profile "mailserver" para email interno)
 ├── docker-compose.test.yml # Stack de teste semi-real
 ├── requirements.txt        # Dependências Python
 ├── config.ini.example      # Configuração de exemplo (copiar para config.ini)
 ├── config.ini              # Credenciais e configuração reais (não versionado)
 ├── config.test.ini         # Configuração para testes (não versionado)
 ├── numeros_sms.txt         # Números de destino SMS (não versionado)
+├── mailconfig/             # Conta de email interno (gerada pelo setup.sh)
 ├── models/                 # Modelo GGUF persistente (criado pelo setup.sh)
 ├── logs/                   # Logs persistentes (criado pelo setup.sh)
 └── test/
