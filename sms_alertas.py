@@ -369,8 +369,14 @@ def main() -> None:
         except Exception as exc:  # noqa: BLE001 — continuar com os restantes emails
             logging.error("Erro ao processar email ID %s: %s", num_id, exc)
         finally:
-            # Marcar como LIDO mesmo em caso de erro de envio (evita ciclos)
+            # 1. Marcar como LIDO mesmo em caso de erro de envio (evita ciclos)
             mail.store(num_id, "+FLAGS", "\\Seen")
+
+            # 2. Marca o email para ser apagado
+            mail.store(num_id, "+FLAGS", "\\Deleted")
+
+            # 3. Remove permanentemente os emails marcados
+            mail.expunge()
 
     mail.logout()
     logging.info("Processamento concluído.")
