@@ -70,8 +70,51 @@ else
     echo "  numeros_sms.txt já existe — mantido sem alterações"
 fi
 
+# ---------------------------------------------------------------------------
+# Servidor de email interno (opcional)
+# Só configurado se MAIL_ACCOUNT e MAIL_PASSWORD estiverem definidos no .env
+# ---------------------------------------------------------------------------
+
+# Carregar variáveis do .env para verificar se o mail interno está configurado
+if [ -f "$ENV_FILE" ]; then
+    # shellcheck disable=SC1090
+    set -o allexport; source "$ENV_FILE"; set +o allexport
+fi
+
+if [ -n "${MAIL_ACCOUNT:-}" ] && [ -n "${MAIL_PASSWORD:-}" ]; then
+    if ! command -v openssl &>/dev/null; then
+        echo "AVISO: openssl não encontrado — conta de email interno não configurada."
+        echo "       Instala openssl e corre setup.sh novamente."
+    else
+        mkdir -p mailconfig
+        MAIL_HASH=$(openssl passwd -6 "${MAIL_PASSWORD}")
+        echo "${MAIL_ACCOUNT}|{SHA512-CRYPT}${MAIL_HASH}" > mailconfig/postfix-accounts.cf
+        echo ""
+        echo "  mailconfig/postfix-accounts.cf criado"
+        echo "  Conta interna: ${MAIL_ACCOUNT}"
+        echo "  Domínio: ${MAIL_DOMAIN:-alertas.local}"
+        INTERNAL_MAIL=true
+    fi
+else
+    echo ""
+    echo "  Servidor de email interno não configurado (MAIL_ACCOUNT/MAIL_PASSWORD não definidos no .env)"
+    echo "  Para activar: preenche MAIL_ACCOUNT e MAIL_PASSWORD no .env e volta a correr setup.sh"
+    INTERNAL_MAIL=false
+fi
+
 echo ""
 echo "Setup concluído. Passos seguintes:"
-echo "  1. Edita config.ini com as credenciais IMAP e TG100"
-echo "  2. Edita numeros_sms.txt com os números de destino"
-echo "  3. docker compose up -d"
+if [ "${INTERNAL_MAIL:-false}" = "true" ]; then
+    echo "  Modo: servidor de email INTERNO"
+    echo "  1. Edita config.ini [imap]: server=127.0.0.1 port=143 use_ssl=false user=${MAIL_ACCOUNT}"
+    echo "  2. Edita config.ini [tg100] com as credenciais do TG100"
+    echo "  3. Edita numeros_sms.txt com os números de destino"
+    echo "  4. docker compose --profile mailserver up -d"
+    echo ""
+    echo "  Os sistemas externos enviam emails para SMTP deste servidor na porta 25."
+else
+    echo "  Modo: servidor de email EXTERNO"
+    echo "  1. Edita config.ini com as credenciais IMAP e TG100"
+    echo "  2. Edita numeros_sms.txt com os números de destino"
+    echo "  3. docker compose up -d"
+fi

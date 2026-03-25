@@ -3,15 +3,19 @@
 #
 #  Serviços:
 #      sms_alertas — Script Python que lê emails e envia SMS
+#      mailserver  — Servidor IMAP+SMTP interno (opcional, profile "mailserver")
 #
 #  Ligações externas (fora do Docker):
 #      → Servidor IMAP externo  (configurado em config.ini [imap])
 #      → Yeastar TG100 externo  (configurado em config.ini [tg100])
 #
-#  Uso:
-#      cp .env.example .env          # preencher credenciais
-#      docker compose up -d          # iniciar
-#      docker compose logs -f        # ver logs em tempo real
+#  Uso — servidor de email externo (padrão):
+#      docker compose up -d
+#
+#  Uso — servidor de email interno:
+#      bash setup.sh                            # cria conta de email
+#      docker compose --profile mailserver up -d
+#      # Aponta config.ini [imap] para 127.0.0.1:143 use_ssl=false
 # =============================================================================
 
 services:
@@ -66,3 +70,45 @@ services:
       timeout: 15s
       retries: 3
       start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # Servidor de email interno (opcional)
+  # Ativado com: docker compose --profile mailserver up -d
+  #
+  # SMTP porta 25  — recebe emails dos sistemas de monitorização externos
+  # IMAP porta 143 — lido pelo sms_alertas via 127.0.0.1:143 (sem TLS)
+  #
+  # Conta criada pelo setup.sh a partir de MAIL_ACCOUNT e MAIL_PASSWORD no .env
+  # ---------------------------------------------------------------------------
+  mailserver:
+    image: ghcr.io/docker-mailserver/docker-mailserver:14
+    container_name: mailserver
+    hostname: mail
+    domainname: ${MAIL_DOMAIN:-alertas.local}
+    profiles:
+      - mailserver
+    ports:
+      - "25:25"    # SMTP — receber emails externos
+      - "143:143"  # IMAP — acesso pelo sms_alertas via localhost
+    volumes:
+      - maildata:/var/mail
+      - mailstate:/var/mail-state
+      - maillogs:/var/log/mail
+      - ./mailconfig:/tmp/docker-mailserver
+    environment:
+      TZ: ${TZ:-Europe/Lisbon}
+      ENABLE_RSPAMD: "0"
+      ENABLE_CLAMAV: "0"
+      ENABLE_FAIL2BAN: "0"
+      SSL_TYPE: ""
+      POSTFIX_INET_PROTOCOLS: ipv4
+      PERMIT_DOCKER: connected-networks
+      POSTMASTER_ADDRESS: ${MAIL_ACCOUNT:-alertas@alertas.local}
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+
+volumes:
+  maildata:
+  mailstate:
+  maillogs:

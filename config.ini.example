@@ -4,13 +4,30 @@
 # =============================================================================
 
 [imap]
-# Servidor IMAP — usar 127.0.0.1 para Dovecot local
+# ---------------------------------------------------------------------------
+# Opção A — servidor de email EXTERNO (padrão)
+#   Preencher com as credenciais do servidor IMAP institucional/externo.
+#   Arrancar com: docker compose up -d
+# ---------------------------------------------------------------------------
+# server   = mail.instituicao.pt
+# port     = 993
+# use_ssl  = true
+# user     = alertas@instituicao.pt
+# password = ALTERAR_PASSWORD_AQUI
+
+# ---------------------------------------------------------------------------
+# Opção B — servidor de email INTERNO (Docker)
+#   1. Preencher MAIL_ACCOUNT e MAIL_PASSWORD no .env
+#   2. Correr: bash setup.sh
+#   3. Arrancar com: docker compose --profile mailserver up -d
+#   Os sistemas de monitorização enviam emails SMTP para a porta 25 deste host.
+# ---------------------------------------------------------------------------
 server   = 127.0.0.1
-port     = 993
-# true  → IMAP4_SSL  (recomendado em produção, porta 993)
-# false → IMAP4 simples (apenas para loopback local sem TLS disponível)
-use_ssl  = true
-user     = alterar user
+port     = 143
+# true  → IMAP4_SSL  (recomendado para servidor externo, porta 993)
+# false → IMAP4 simples (para servidor interno sem TLS, porta 143)
+use_ssl  = false
+user     = alertas@alertas.local
 password = ALTERAR_PASSWORD_AQUI
 # Pasta a monitorizar
 mailbox  = INBOX

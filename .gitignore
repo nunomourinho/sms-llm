@@ -14,3 +14,10 @@ __pycache__/
 # Modelos LLM (demasiado grandes para versionar)
 *.gguf
 models/
+
+# Dados do servidor de email interno (gerados em runtime)
+maildata/
+mailstate/
+maillogs/
+# Configuração da conta (gerada pelo setup.sh — contém hash da password)
+mailconfig/postfix-accounts.cf
