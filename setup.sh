@@ -8,8 +8,32 @@
 
 set -e
 
-APPUSER_UID=1001
-APPUSER_GID=1001
+APPUSER_UID=$(id -u)
+APPUSER_GID=$(id -g)
+
+# ---------------------------------------------------------------------------
+# Escrever UID/GID no .env para o docker-compose passar ao build do Dockerfile
+# ---------------------------------------------------------------------------
+ENV_FILE=".env"
+
+if [ ! -f "$ENV_FILE" ]; then
+    cp .env.example "$ENV_FILE"
+fi
+
+# Actualizar ou adicionar APPUSER_UID e APPUSER_GID
+if grep -q "^APPUSER_UID=" "$ENV_FILE"; then
+    sed -i "s/^APPUSER_UID=.*/APPUSER_UID=${APPUSER_UID}/" "$ENV_FILE"
+else
+    echo "APPUSER_UID=${APPUSER_UID}" >> "$ENV_FILE"
+fi
+
+if grep -q "^APPUSER_GID=" "$ENV_FILE"; then
+    sed -i "s/^APPUSER_GID=.*/APPUSER_GID=${APPUSER_GID}/" "$ENV_FILE"
+else
+    echo "APPUSER_GID=${APPUSER_GID}" >> "$ENV_FILE"
+fi
+
+echo "  UID/GID detectados: ${APPUSER_UID}:${APPUSER_GID} → escritos em ${ENV_FILE}"
 
 # ---------------------------------------------------------------------------
 # Directorias montadas como volumes pelo docker-compose.yml
@@ -20,7 +44,7 @@ echo "A criar directorias de dados..."
 mkdir -p models
 chmod 777 models
 
-# Logs — escritos pelo utilizador appuser (uid 1001) dentro do container
+# Logs — escritos pelo utilizador appuser dentro do container
 mkdir -p logs
 chown "${APPUSER_UID}:${APPUSER_GID}" logs 2>/dev/null || chmod 777 logs
 

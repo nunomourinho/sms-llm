@@ -40,8 +40,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # ---------------------------------------------------------------------------
 # Utilizador não-root para correr a aplicação
 # ---------------------------------------------------------------------------
-RUN groupadd --gid 1001 appgroup && \
-    useradd  --uid 1001 --gid appgroup --shell /bin/bash --create-home appuser
+ARG APPUSER_UID=1001
+ARG APPUSER_GID=1001
+
+RUN groupadd --gid "${APPUSER_GID}" appgroup && \
+    useradd  --uid "${APPUSER_UID}" --gid appgroup --shell /bin/bash --create-home appuser
 
 # ---------------------------------------------------------------------------
 # Instalar dependências Python
